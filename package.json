@@ -1,0 +1,40 @@
+{
+  "name": "linguas-ia",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LinguasIA - Sistema de Estudo de Idiomas (React + Next.js)",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "jest",
+    "app:start": "node scripts/app-start.js",
+    "app:stop": "node scripts/app-stop.js",
+    "app:restart": "node scripts/app-restart.js"
+  },
+  "dependencies": {
+    "canvas-confetti": "^1.9.4",
+    "next": "^16.4.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "@testing-library/dom": "^10.4.0",
+    "@testing-library/jest-dom": "^6.4.0",
+    "@testing-library/react": "^16.3.0",
+    "@testing-library/user-event": "^14.5.2",
+    "jest": "^29.7.0",
+    "jest-environment-jsdom": "^29.7.0",
+    "tailwindcss": "^4.3.3"
+  },
+  "keywords": [
+    "linguas",
+    "ia",
+    "language-learning",
+    "react",
+    "nextjs"
+  ],
+  "author": "",
+  "license": "ISC"
+}
