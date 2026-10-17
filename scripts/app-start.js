@@ -5,6 +5,7 @@
  * Uso:
  *   npm run app:start
  *   npm run app:start -- --prod          # build de produção antes de iniciar
+ *   npm run app:start -- --webpack       # dev com webpack (contorna o loop de HMR do Turbopack)
  *   npm run app:start -- --no-browser    # não abre o navegador
  *   npm run app:start -- --port=3001     # usa outra porta
  */

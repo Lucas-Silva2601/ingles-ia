@@ -240,6 +240,8 @@ npm run dev
 | `npm run build` | Build de produção otimizado |
 | `npm start` | Sobe o servidor de produção em primeiro plano |
 | `npm test` | Executa os 19 testes (Jest) |
+| `npm run app:start:webpack` | Inicia em dev com webpack (evita o loop de HMR do Turbopack) |
+| `npm run app:restart:webpack` | Reinicia em dev com webpack |
 
 </details>
 

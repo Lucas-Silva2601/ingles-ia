@@ -9,8 +9,10 @@
     "start": "next start",
     "test": "jest",
     "app:start": "node scripts/app-start.js",
+    "app:start:webpack": "node scripts/app-start.js --webpack",
     "app:stop": "node scripts/app-stop.js",
-    "app:restart": "node scripts/app-restart.js"
+    "app:restart": "node scripts/app-restart.js",
+    "app:restart:webpack": "node scripts/app-restart.js --webpack"
   },
   "dependencies": {
     "canvas-confetti": "^1.9.4",

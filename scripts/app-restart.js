@@ -5,6 +5,7 @@
  * Uso:
  *   npm run app:restart
  *   npm run app:restart -- --prod          # build de produção antes de iniciar
+ *   npm run app:restart -- --webpack       # dev com webpack (contorna o loop de HMR do Turbopack)
  *   npm run app:restart -- --no-browser    # não abre o navegador
  *   npm run app:restart -- --port=3001     # usa outra porta
  */

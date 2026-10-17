@@ -26,13 +26,18 @@ function delay(ms) {
 
 /**
  * Interpreta os argumentos da linha de comando.
- * Opções: --prod, --no-browser, --port=3001 (ou --port 3001)
+ * Opções: --prod, --webpack, --no-browser, --port=3001 (ou --port 3001)
  * Também aceita a variável de ambiente APP_PORT.
+ *
+ * --webpack só vale no modo desenvolvimento: usa o bundler webpack em vez do
+ * Turbopack. Serve como contorno para o loop de recarregamento do HMR do
+ * Turbopack no Next 16 (aba aberta + reinício do servidor de dev).
  */
 function parseArgs(argv) {
     const options = {
         port: Number(process.env.APP_PORT) || DEFAULT_PORT,
         prod: false,
+        webpack: false,
         openBrowser: true,
     };
 
@@ -41,6 +46,8 @@ function parseArgs(argv) {
 
         if (arg === '--prod') {
             options.prod = true;
+        } else if (arg === '--webpack') {
+            options.webpack = true;
         } else if (arg === '--no-browser') {
             options.openBrowser = false;
         } else if (arg === '--port' && argv[i + 1]) {
@@ -228,8 +235,11 @@ function openBrowser(url) {
  * Inicia a aplicação em segundo plano e (por padrão) abre o navegador.
  * Retorna 0 em sucesso e 1 em erro.
  */
-async function startApp({ port, prod, openBrowser: shouldOpenBrowser }) {
+async function startApp({ port, prod, webpack = false, openBrowser: shouldOpenBrowser }) {
     const url = `http://localhost:${port}`;
+    // --webpack só se aplica ao servidor de desenvolvimento.
+    const useWebpack = !prod && webpack;
+    const modeLabel = `${prod ? 'produção' : 'desenvolvimento'}${useWebpack ? ', webpack' : ''}`;
 
     // Já existe uma instância nossa rodando?
     const state = readState();
@@ -262,6 +272,9 @@ async function startApp({ port, prod, openBrowser: shouldOpenBrowser }) {
 
     // Modo produção: gera o build antes de iniciar
     if (prod) {
+        if (webpack) {
+            console.log('Aviso: --webpack é ignorado no modo produção.');
+        }
         console.log('Gerando build de produção...');
         try {
             execFileSync(process.execPath, [NEXT_BIN, 'build'], { cwd: ROOT_DIR, stdio: 'inherit' });
@@ -274,11 +287,17 @@ async function startApp({ port, prod, openBrowser: shouldOpenBrowser }) {
     // Inicia o servidor em segundo plano com logs em arquivo
     fs.appendFileSync(
         LOG_FILE,
-        `\n===== ${new Date().toISOString()} — iniciando (${prod ? 'produção' : 'desenvolvimento'}) na porta ${port} =====\n`
+        `\n===== ${new Date().toISOString()} — iniciando (${modeLabel}) na porta ${port} =====\n`
     );
 
+    const nextArgs = [NEXT_BIN, prod ? 'start' : 'dev'];
+    if (useWebpack) {
+        nextArgs.push('--webpack');
+    }
+    nextArgs.push('-p', String(port));
+
     const logFd = fs.openSync(LOG_FILE, 'a');
-    const child = spawn(process.execPath, [NEXT_BIN, prod ? 'start' : 'dev', '-p', String(port)], {
+    const child = spawn(process.execPath, nextArgs, {
         cwd: ROOT_DIR,
         detached: true,
         stdio: ['ignore', logFd, logFd],
@@ -291,11 +310,12 @@ async function startApp({ port, prod, openBrowser: shouldOpenBrowser }) {
         port,
         url,
         mode: prod ? 'production' : 'development',
+        bundler: prod ? undefined : useWebpack ? 'webpack' : 'turbopack',
         startedAt: new Date().toISOString(),
         logFile: LOG_FILE,
     });
 
-    console.log(`Iniciando a aplicação (${prod ? 'produção' : 'desenvolvimento'}) na porta ${port}...`);
+    console.log(`Iniciando a aplicação (${modeLabel}) na porta ${port}...`);
 
     const ready = await waitForServerReady(url);
     if (!ready) {
