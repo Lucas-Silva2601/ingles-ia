@@ -6,5 +6,9 @@ echo.
 echo Parando o LinguasIA...
 echo.
 node scripts\app-stop.js %*
-echo.
-pause
+if errorlevel 1 (
+  echo.
+  echo Falha ao parar. Veja os detalhes em .app.log
+  echo.
+  pause
+)

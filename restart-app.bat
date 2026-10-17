@@ -6,5 +6,9 @@ echo.
 echo Reiniciando o LinguasIA...
 echo.
 node scripts\app-restart.js %*
-echo.
-pause
+if errorlevel 1 (
+  echo.
+  echo Falha ao reiniciar. Veja os detalhes em .app.log
+  echo.
+  pause
+)

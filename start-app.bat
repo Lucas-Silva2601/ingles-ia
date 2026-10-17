@@ -6,5 +6,9 @@ echo.
 echo Iniciando o LinguasIA...
 echo.
 node scripts\app-start.js %*
-echo.
-pause
+if errorlevel 1 (
+  echo.
+  echo Falha ao iniciar. Veja os detalhes em .app.log
+  echo.
+  pause
+)

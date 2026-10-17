@@ -116,7 +116,7 @@ function checkPortAvailable(port) {
 function getListeningPids(port) {
     try {
         if (process.platform === 'win32') {
-            const output = execFileSync('netstat', ['-ano', '-p', 'tcp'], { encoding: 'utf8' });
+            const output = execFileSync('netstat', ['-ano', '-p', 'tcp'], { encoding: 'utf8', windowsHide: true });
             const pids = new Set();
 
             for (const line of output.split(/\r?\n/)) {
@@ -154,7 +154,7 @@ async function waitForPortFree(port, timeoutMs = 10000) {
 function killProcessTree(pid) {
     if (process.platform === 'win32') {
         try {
-            execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' });
+            execFileSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true });
         } catch {
             // processo já encerrado
         }
@@ -218,7 +218,7 @@ async function waitForServerReady(url, timeoutMs = 60000) {
 function openBrowser(url) {
     try {
         if (process.platform === 'win32') {
-            spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore' }).unref();
+            spawn('cmd', ['/c', 'start', '', url], { detached: true, stdio: 'ignore', windowsHide: true }).unref();
         } else if (process.platform === 'darwin') {
             spawn('open', [url], { detached: true, stdio: 'ignore' }).unref();
         } else {
@@ -227,6 +227,45 @@ function openBrowser(url) {
     } catch {
         console.log(`   Não foi possível abrir o navegador. Acesse manualmente: ${url}`);
     }
+}
+
+/* ==================== Inicialização sem janela (Windows) ==================== */
+
+/** Envolve um argumento em aspas duplas para uso na linha de comando do cmd. */
+function quoteWindowsArg(value) {
+    return `"${String(value)}"`;
+}
+
+/**
+ * Inicia um comando em segundo plano sem abrir janela de console no Windows.
+ *
+ * `spawn(..., { detached: true })` deixa o processo sem console, e o
+ * next-server (filho do CLI) acaba ganhando um console visível. Já
+ * `Start-Process -WindowStyle Hidden` cria um console oculto, herdado pelos
+ * filhos. O `cmd /d /s /c` mantém o log em modo append (>>).
+ *
+ * Retorna o PID do cmd, usado por app:stop/app:restart para encerrar a árvore.
+ */
+function spawnHiddenWindows(commandLine) {
+    const script = [
+        "$ErrorActionPreference = 'Stop'",
+        '$arg = \'"\' + $env:LINGUASIA_CMD + \'"\'',
+        "$p = Start-Process -FilePath $env:ComSpec -ArgumentList '/d','/s','/c',$arg -WorkingDirectory $env:LINGUASIA_CWD -WindowStyle Hidden -PassThru",
+        '$p.Id',
+    ].join('; ');
+
+    const output = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+        encoding: 'utf8',
+        windowsHide: true,
+        env: { ...process.env, LINGUASIA_CMD: commandLine, LINGUASIA_CWD: ROOT_DIR },
+    });
+
+    const pid = Number(output.trim());
+    if (!Number.isInteger(pid) || pid <= 0) {
+        throw new Error(`Não foi possível iniciar o servidor em segundo plano: ${output.trim()}`);
+    }
+
+    return pid;
 }
 
 /* ============================= Ações =============================== */
@@ -296,17 +335,36 @@ async function startApp({ port, prod, webpack = false, openBrowser: shouldOpenBr
     }
     nextArgs.push('-p', String(port));
 
-    const logFd = fs.openSync(LOG_FILE, 'a');
-    const child = spawn(process.execPath, nextArgs, {
-        cwd: ROOT_DIR,
-        detached: true,
-        stdio: ['ignore', logFd, logFd],
-        env: { ...process.env },
-    });
-    child.unref();
+    let serverPid;
+    if (process.platform === 'win32') {
+        // `spawn(..., { detached: true })` deixa o CLI sem console e o
+        // next-server (filho) abre uma janela visível. Start-Process com
+        // -WindowStyle Hidden cria um console oculto herdado pelos filhos;
+        // o cmd /c mantém o log em modo append (>>).
+        const commandLine =
+            [process.execPath, ...nextArgs].map(quoteWindowsArg).join(' ') +
+            ` >> ${quoteWindowsArg(LOG_FILE)} 2>&1`;
+
+        try {
+            serverPid = spawnHiddenWindows(commandLine);
+        } catch (error) {
+            console.error(error.message);
+            return 1;
+        }
+    } else {
+        const logFd = fs.openSync(LOG_FILE, 'a');
+        const child = spawn(process.execPath, nextArgs, {
+            cwd: ROOT_DIR,
+            detached: true,
+            stdio: ['ignore', logFd, logFd],
+            env: { ...process.env },
+        });
+        child.unref();
+        serverPid = child.pid;
+    }
 
     writeState({
-        pid: child.pid,
+        pid: serverPid,
         port,
         url,
         mode: prod ? 'production' : 'development',
@@ -323,7 +381,7 @@ async function startApp({ port, prod, webpack = false, openBrowser: shouldOpenBr
         return 1;
     }
 
-    console.log(`Aplicação pronta: ${url} (PID ${child.pid})`);
+    console.log(`Aplicação pronta: ${url} (PID ${serverPid})`);
     console.log('Logs: .app.log');
 
     if (shouldOpenBrowser) {

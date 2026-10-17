@@ -242,6 +242,7 @@ npm run dev
 | `npm test` | Executa os 19 testes (Jest) |
 | `npm run app:start:webpack` | Inicia em dev com webpack (evita o loop de HMR do Turbopack) |
 | `npm run app:restart:webpack` | Reinicia em dev com webpack |
+| `start-app-silent.vbs` | Duplo clique: inicia e abre o navegador sem abrir nenhuma janela |
 
 </details>
 
